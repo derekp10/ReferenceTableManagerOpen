@@ -12,6 +12,7 @@ Option Explicit
 'ReferenceTableManager
 'By Derek Pierce (12/6/2016)
 'Ver. 1.0 12/6/2016 Based off of GenericReferenceTableManager
+'Ver. 1.3 6/10/2019
 
 Implements IReferenceTableManagerConfig
 
@@ -49,20 +50,23 @@ End Enum
 Private RefTableMngCORE As New ReferenceTableManagerCore
 Private colRefTableCollections As Collection
 
-Public Function GetTableNameForRefTableEnu(ByVal TargetRefTable As RefTableEnu) As String
+Public Function GetTableConfigForRefTableEnu(ByVal TargetRefTable As RefTableEnu) As IReferenceTableConfig
     '!IMPORTANT!: This section must be set up prior to use with a new project.
     'NOTICE: Add RefTable Names here.
     'If table(s) are not added to code it returns null string or error
-    Dim strTableName As String
+    Dim objRefTableConfg As GenericReferenceTableConfig
+
+    Set objRefTableConfg = New GenericReferenceTableConfig
 
     'Example Entry
 '    If TargetRefTable = rte_DebugRefTable Then 'Specify the Enumerator
-'        strTableName = "DebugRefTable" 'Specify the data returned for the enumerator
+'        'Specify the data returned for the enumerator
+'        objRefTableConfg.SetConfigValues "DebugRefTable", "DebugRefID", "DebugRefName"
 '        GoTo TableFound:
 '    End If
 
 TableFound:
-    GetTableNameForRefTableEnu = strTableName
+    Set GetTableConfigForRefTableEnu = objRefTableConfg
 End Function
 
 'Interface Implementations
@@ -97,7 +101,7 @@ Private Sub Class_Initialize()
 End Sub
 
 Public Function GetRefCol(ByVal TargetRefTable As RefTableEnu, Optional KeyType As RefTableKeyType = rtkt_RefTypeRefName) As Collection
-    Set GetRefCol = RefTableMngCORE.CORE_GetRefCol(GetTableNameForRefTableEnu(TargetRefTable), KeyType)
+    Set GetRefCol = RefTableMngCORE.CORE_GetRefCol(GetTableConfigForRefTableEnu(TargetRefTable), KeyType)
 End Function
 
 Public Function UpdateRefTableCollections(Optional ByVal ForceUpdate As Boolean = False, Optional ByVal TargetRefTable As RefTableEnu = rte_PLACEHOLDERDONOTUSE)
@@ -105,10 +109,10 @@ Public Function UpdateRefTableCollections(Optional ByVal ForceUpdate As Boolean 
 
     If TargetRefTable = rte_PLACEHOLDERDONOTUSE Then
         For RefEnuNum = RefTableEnu.[_First] To RefTableEnu.[_Last]
-            RefTableMngCORE.CORE_UpdateRefTableCollections True, GetTableNameForRefTableEnu(RefEnuNum)
+            RefTableMngCORE.CORE_UpdateRefTableCollections True, GetTableConfigForRefTableEnu(RefEnuNum)
         Next RefEnuNum
     Else:
-        RefTableMngCORE.CORE_UpdateRefTableCollections ForceUpdate, GetTableNameForRefTableEnu(TargetRefTable)
+        RefTableMngCORE.CORE_UpdateRefTableCollections ForceUpdate, GetTableConfigForRefTableEnu(TargetRefTable)
     End If
 
 End Function
@@ -116,37 +120,37 @@ End Function
 Public Function GetIDFromString(ByVal TargetRefTable As RefTableEnu, strTarget As String) As Long
     ''Using a string value and a reference table to look up, returns the ID for that string
     ''Key lookups are CASE SENSITIVE!!
-    GetIDFromString = RefTableMngCORE.CORE_GetIDFromString(GetTableNameForRefTableEnu(TargetRefTable), strTarget)
+    GetIDFromString = RefTableMngCORE.CORE_GetIDFromString(GetTableConfigForRefTableEnu(TargetRefTable), strTarget)
 End Function
 
 Public Function GetStringFromID(ByVal TargetRefTable As RefTableEnu, lngTarget As Variant) As String
     ''Using a long(variant) value and a reference table to look up, returns the String value for that ID
-    GetStringFromID = RefTableMngCORE.CORE_GetStringFromID(GetTableNameForRefTableEnu(TargetRefTable), lngTarget)
+    GetStringFromID = RefTableMngCORE.CORE_GetStringFromID(GetTableConfigForRefTableEnu(TargetRefTable), lngTarget)
 End Function
 
 Public Function GetExtraDataFromID(ByVal TargetRefTable As RefTableEnu, lngTarget As Variant) As RefTableExtraDataCollection
     ''Gets any extra data that may be present for the Reftable. (Forward comments etc..)
-    Set GetExtraDataFromID = RefTableMngCORE.CORE_GetExtraDataFromID(GetTableNameForRefTableEnu(TargetRefTable), lngTarget)
+    Set GetExtraDataFromID = RefTableMngCORE.CORE_GetExtraDataFromID(GetTableConfigForRefTableEnu(TargetRefTable), lngTarget)
 End Function
 
 Public Function CheckIfTextExists(ByVal TargetRefTable As RefTableEnu, ByVal TargetText As String) As Boolean
-    CheckIfTextExists = RefTableMngCORE.CORE_CheckIfTextExists(GetTableNameForRefTableEnu(TargetRefTable), TargetText)
+    CheckIfTextExists = RefTableMngCORE.CORE_CheckIfTextExists(GetTableConfigForRefTableEnu(TargetRefTable), TargetText)
 End Function
 
 Public Function CheckIfIDExists(ByVal TargetRefTable As RefTableEnu, ByVal TargetID As String) As Boolean
-    CheckIfIDExists = RefTableMngCORE.CORE_CheckIfIDExists(GetTableNameForRefTableEnu(TargetRefTable), TargetID)
+    CheckIfIDExists = RefTableMngCORE.CORE_CheckIfIDExists(GetTableConfigForRefTableEnu(TargetRefTable), TargetID)
 End Function
 
 Public Function AddNewRefData(ByVal TargetRefTable As RefTableEnu, ByRef NewRefTableData As RefTableDataClass)
-    RefTableMngCORE.CORE_AddNewRefData GetTableNameForRefTableEnu(TargetRefTable), NewRefTableData
+    RefTableMngCORE.CORE_AddNewRefData GetTableConfigForRefTableEnu(TargetRefTable), NewRefTableData
 End Function
 
 Public Function UpdateExistingRefData(ByVal TargetRefTable As RefTableEnu, ByRef NewRefTableData As RefTableDataClass)
-    RefTableMngCORE.CORE_UpdateExistingRefData GetTableNameForRefTableEnu(TargetRefTable), NewRefTableData
+    RefTableMngCORE.CORE_UpdateExistingRefData GetTableConfigForRefTableEnu(TargetRefTable), NewRefTableData
 End Function
 
 Public Function GetConfiguredRefTableDataClass(ByVal TargetRefTable As RefTableEnu) As RefTableDataClass
-    Set GetConfiguredRefTableDataClass = RefTableMngCORE.CORE_GetConfiguredRefTableDataClass(GetTableNameForRefTableEnu(TargetRefTable))
+    Set GetConfiguredRefTableDataClass = RefTableMngCORE.CORE_GetConfiguredRefTableDataClass(GetTableConfigForRefTableEnu(TargetRefTable))
 End Function
 
 Public Function IgnoreRefUpdateChecks(ByVal Ignore As Boolean)

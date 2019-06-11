@@ -12,6 +12,7 @@ Option Explicit
 'GenericReferenceTableManager
 'By Derek Pierce (12/6/2016)
 'Ver. 1.0 12/6/2016
+'Ver. 1.3 6/10/2019
 
 Implements IReferenceTableManagerConfig
 
@@ -49,20 +50,23 @@ End Enum
 Private RefTableMngCORE As New ReferenceTableManagerCore
 Private colRefTableCollections As Collection
 
-Public Function Generic_GetTableNameForRefTableEnu(ByVal TargetRefTable As Generic_RefTableEnu) As String
+Public Function Generic_GetTableConfigForRefTableEnu(ByVal TargetRefTable As Generic_RefTableEnu) As IReferenceTableConfig
     '!IMPORTANT!: This section must be set up prior to use with a new project.
     'NOTICE: Add RefTable Names here.
     'If table(s) are not added to code it returns null string or error
-    Dim strTableName As String
+    Dim objRefTableConfg As GenericReferenceTableConfig
+
+    Set objRefTableConfg = New GenericReferenceTableConfig
 
     'Example Entry
 '    If TargetRefTable = rte_DebugRefTable Then 'Specify the Enumerator
-'        strTableName = "DebugRefTable" 'Specify the data returned for the enumerator
+'        'Specify the data returned for the enumerator
+'        objRefTableConfg.SetConfigValues "DebugRefTable", "DebugRefID", "DebugRefName"
 '        GoTo TableFound:
 '    End If
 
 TableFound:
-    Generic_GetTableNameForRefTableEnu = strTableName
+    Set Generic_GetTableConfigForRefTableEnu = objRefTableConfg
 End Function
 
 'Interface Implementations
@@ -97,7 +101,7 @@ Private Sub Class_Initialize()
 End Sub
 
 Public Function Generic_GetRefCol(ByVal TargetRefTable As Generic_RefTableEnu, Optional KeyType As RefTableKeyType = rtkt_RefTypeRefName) As Collection
-    Set Generic_GetRefCol = RefTableMngCORE.CORE_GetRefCol(Generic_GetTableNameForRefTableEnu(TargetRefTable), KeyType)
+    Set Generic_GetRefCol = RefTableMngCORE.CORE_GetRefCol(Generic_GetTableConfigForRefTableEnu(TargetRefTable), KeyType)
 End Function
 
 Public Function Generic_UpdateRefTableCollections(Optional ByVal ForceUpdate As Boolean = False, Optional ByVal TargetRefTable As Generic_RefTableEnu = rte_GENERIC_PLACEHOLDERDONOTUSE)
@@ -105,10 +109,10 @@ Public Function Generic_UpdateRefTableCollections(Optional ByVal ForceUpdate As 
 
     If TargetRefTable = rte_GENERIC_PLACEHOLDERDONOTUSE Then
         For RefEnuNum = Generic_RefTableEnu.[_First] To Generic_RefTableEnu.[_Last]
-            RefTableMngCORE.CORE_UpdateRefTableCollections True, Generic_GetTableNameForRefTableEnu(RefEnuNum)
+            RefTableMngCORE.CORE_UpdateRefTableCollections True, Generic_GetTableConfigForRefTableEnu(RefEnuNum)
         Next RefEnuNum
     Else:
-        RefTableMngCORE.CORE_UpdateRefTableCollections ForceUpdate, Generic_GetTableNameForRefTableEnu(TargetRefTable)
+        RefTableMngCORE.CORE_UpdateRefTableCollections ForceUpdate, Generic_GetTableConfigForRefTableEnu(TargetRefTable)
     End If
 
 End Function
@@ -116,37 +120,37 @@ End Function
 Public Function Generic_GetIDFromString(ByVal TargetRefTable As Generic_RefTableEnu, strTarget As String) As Long
     ''Using a string value and a reference table to look up, returns the ID for that string
     ''Key lookups are CASE SENSITIVE!!
-    Generic_GetIDFromString = RefTableMngCORE.CORE_GetIDFromString(Generic_GetTableNameForRefTableEnu(TargetRefTable), strTarget)
+    Generic_GetIDFromString = RefTableMngCORE.CORE_GetIDFromString(Generic_GetTableConfigForRefTableEnu(TargetRefTable), strTarget)
 End Function
 
 Public Function Generic_GetStringFromID(ByVal TargetRefTable As Generic_RefTableEnu, lngTarget As Variant) As String
     ''Using a long(variant) value and a reference table to look up, returns the String value for that ID
-    Generic_GetStringFromID = RefTableMngCORE.CORE_GetStringFromID(Generic_GetTableNameForRefTableEnu(TargetRefTable), lngTarget)
+    Generic_GetStringFromID = RefTableMngCORE.CORE_GetStringFromID(Generic_GetTableConfigForRefTableEnu(TargetRefTable), lngTarget)
 End Function
 
 Public Function Generic_GetExtraDataFromID(ByVal TargetRefTable As Generic_RefTableEnu, lngTarget As Variant) As RefTableExtraDataCollection
     ''Gets any extra data that may be present for the Reftable. (Forward comments etc..)
-    Set Generic_GetExtraDataFromID = RefTableMngCORE.CORE_GetExtraDataFromID(Generic_GetTableNameForRefTableEnu(TargetRefTable), lngTarget)
+    Set Generic_GetExtraDataFromID = RefTableMngCORE.CORE_GetExtraDataFromID(Generic_GetTableConfigForRefTableEnu(TargetRefTable), lngTarget)
 End Function
 
 Public Function Generic_CheckIfTextExists(ByVal TargetRefTable As Generic_RefTableEnu, ByVal TargetText As String) As Boolean
-    Generic_CheckIfTextExists = RefTableMngCORE.CORE_CheckIfTextExists(Generic_GetTableNameForRefTableEnu(TargetRefTable), TargetText)
+    Generic_CheckIfTextExists = RefTableMngCORE.CORE_CheckIfTextExists(Generic_GetTableConfigForRefTableEnu(TargetRefTable), TargetText)
 End Function
 
 Public Function Generic_CheckIfIDExists(ByVal TargetRefTable As Generic_RefTableEnu, ByVal TargetID As String) As Boolean
-    Generic_CheckIfIDExists = RefTableMngCORE.CORE_CheckIfIDExists(Generic_GetTableNameForRefTableEnu(TargetRefTable), TargetID)
+    Generic_CheckIfIDExists = RefTableMngCORE.CORE_CheckIfIDExists(Generic_GetTableConfigForRefTableEnu(TargetRefTable), TargetID)
 End Function
 
 Public Function Generic_AddNewRefData(ByVal TargetRefTable As Generic_RefTableEnu, ByRef NewRefTableData As RefTableDataClass)
-    RefTableMngCORE.CORE_AddNewRefData Generic_GetTableNameForRefTableEnu(TargetRefTable), NewRefTableData
+    RefTableMngCORE.CORE_AddNewRefData Generic_GetTableConfigForRefTableEnu(TargetRefTable), NewRefTableData
 End Function
 
 Public Function Generic_UpdateExistingRefData(ByVal TargetRefTable As Generic_RefTableEnu, ByRef NewRefTableData As RefTableDataClass)
-    RefTableMngCORE.CORE_UpdateExistingRefData Generic_GetTableNameForRefTableEnu(TargetRefTable), NewRefTableData
+    RefTableMngCORE.CORE_UpdateExistingRefData Generic_GetTableConfigForRefTableEnu(TargetRefTable), NewRefTableData
 End Function
 
 Public Function Generic_GetConfiguredRefTableDataClass(ByVal TargetRefTable As Generic_RefTableEnu) As RefTableDataClass
-    Set Generic_GetConfiguredRefTableDataClass = RefTableMngCORE.CORE_GetConfiguredRefTableDataClass(Generic_GetTableNameForRefTableEnu(TargetRefTable))
+    Set Generic_GetConfiguredRefTableDataClass = RefTableMngCORE.CORE_GetConfiguredRefTableDataClass(Generic_GetTableConfigForRefTableEnu(TargetRefTable))
 End Function
 
 Public Function Generic_IgnoreRefUpdateChecks(ByVal Ignore As Boolean)
