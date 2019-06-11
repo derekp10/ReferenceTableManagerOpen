@@ -15,6 +15,7 @@ Option Explicit
 'Ver. 1.1 3/28/2015
 'Ver. 1.2 12/6/2016
 'Ver. 1.2.1 3/24/2017 Bug Fix
+'Ver. 1.3 6/10/2019
 
 'Table rows are stored as RefTableDataClass
 'All of the collections are built out of/contain this data class
@@ -35,7 +36,7 @@ Public Property Let SetRefTableConfig(ByRef Config As IReferenceTableManagerConf
     Set RefTableConfig = Config
 End Property
 
-Public Function CORE_GetRefCol(ByVal TargetRefTable As String, Optional KeyType As RefTableKeyType = rtkt_RefTypeRefName) As Collection
+Public Function CORE_GetRefCol(ByRef TargetRefTable As IReferenceTableConfig, Optional ByVal KeyType As RefTableKeyType = rtkt_RefTypeRefName) As Collection
     'Returns the local stored version of a RefTable as a collection for use with an optional RefTableKeyType Paramater if
     'the perefered collection key should be the RefID, or the RefName (Defaults to RefName)
     Dim rtnRefTblCol As RefTableCollectionClass
@@ -44,26 +45,26 @@ Public Function CORE_GetRefCol(ByVal TargetRefTable As String, Optional KeyType 
         CORE_UpdateRefTableCollections , TargetRefTable
     End If
 
-    Set rtnRefTblCol = RefTableConfig.RefTableCollections.Item(TargetRefTable)
+    Set rtnRefTblCol = RefTableConfig.RefTableCollections.Item(TargetRefTable.RefTableName)
     
     Set CORE_GetRefCol = rtnRefTblCol.GetCollectionByRefType(KeyType)
 End Function
 
-Private Function SetRefTableCollection(ByVal TargetRefTable As String, ByRef NewRefTableCollectionData As RefTableCollectionClass)
+Private Function SetRefTableCollection(ByRef TargetRefTable As IReferenceTableConfig, ByRef NewRefTableCollectionData As RefTableCollectionClass)
     'Used by the CORE_UpdateRefTableCollections to set the specific RefTableCollectionClass data to a new
     '(if updated or forced) set of data from the database.
     Dim tmpRefTableCollection As RefTableCollectionClass
 
-    If Not RTMInCollection(RefTableConfig.RefTableCollections, TargetRefTable) Then
-        RefTableConfig.RefTableCollections.Add NewRefTableCollectionData, TargetRefTable
+    If Not RTMInCollection(RefTableConfig.RefTableCollections, TargetRefTable.RefTableName) Then
+        RefTableConfig.RefTableCollections.Add NewRefTableCollectionData, TargetRefTable.RefTableName
     Else:
-        RefTableConfig.RefTableCollections.Remove TargetRefTable 'This change may not work needs testing.
-        RefTableConfig.RefTableCollections.Add NewRefTableCollectionData, TargetRefTable
+        RefTableConfig.RefTableCollections.Remove TargetRefTable.RefTableName 'This change may not work needs testing.
+        RefTableConfig.RefTableCollections.Add NewRefTableCollectionData, TargetRefTable.RefTableName
     End If
     
 End Function
 
-Public Function CORE_UpdateRefTableCollections(Optional ByVal ForceUpdate As Boolean = False, Optional ByVal TargetRefTable As String = vbNullString)
+Public Function CORE_UpdateRefTableCollections(Optional ByVal ForceUpdate As Boolean = False, Optional ByRef TargetRefTable As IReferenceTableConfig)
     Dim tmpLastTime As Date
     Dim RefEnuNum As Long
 
@@ -73,24 +74,24 @@ Public Function CORE_UpdateRefTableCollections(Optional ByVal ForceUpdate As Boo
 '        LastDBCheckTime = DateTime.Now
 '    End If
     
-    
-    If Not RTMInCollection(RefTableBuildDate, TargetRefTable) Then
+
+    If Not RTMInCollection(RefTableBuildDate, TargetRefTable.RefTableName) Then
         tmpLastTime = LastRefTableUpdate(TargetRefTable)
-        RefTableBuildDate.Add tmpLastTime, TargetRefTable
+        RefTableBuildDate.Add tmpLastTime, TargetRefTable.RefTableName
     End If
     
 
     If ForceUpdate = True Then
         tmpLastTime = LastRefTableUpdate(TargetRefTable)
         SetRefTableCollection TargetRefTable, BuildRefTableCollectionClass(TargetRefTable)
-        RefTableBuildDate.Remove (TargetRefTable)
-        RefTableBuildDate.Add tmpLastTime, TargetRefTable
+        RefTableBuildDate.Remove (TargetRefTable.RefTableName)
+        RefTableBuildDate.Add tmpLastTime, TargetRefTable.RefTableName
     Else:
-        If RefTableBuildDate.Item(TargetRefTable) < LastRefTableUpdate(TargetRefTable) Then
+        If RefTableBuildDate.Item(TargetRefTable.RefTableName) < LastRefTableUpdate(TargetRefTable) Then
             tmpLastTime = LastRefTableUpdate(TargetRefTable)
             SetRefTableCollection TargetRefTable, BuildRefTableCollectionClass(TargetRefTable)
-            RefTableBuildDate.Remove (TargetRefTable)
-            RefTableBuildDate.Add tmpLastTime, TargetRefTable
+            RefTableBuildDate.Remove (TargetRefTable.RefTableName)
+            RefTableBuildDate.Add tmpLastTime, TargetRefTable.RefTableName
         End If
     End If
 
@@ -99,28 +100,28 @@ Public Function CORE_UpdateRefTableCollections(Optional ByVal ForceUpdate As Boo
 End Function
 
 'Using a string value and a reference table to look up, returns the ID for that string
-Public Function CORE_GetIDFromString(ByVal TargetTypeRefTable As String, strTarget As String) As Long
+Public Function CORE_GetIDFromString(ByRef TargetTypeRefTable As IReferenceTableConfig, ByVal strTarget As String) As Long
     'Key lookups are CASE SENSITIVE!!
     CORE_GetIDFromString = GetRelevantDataByStr(TargetTypeRefTable, strTarget).RefTypeID
 
 End Function
 
 'Using a long(variant) value and a reference table to look up, returns the String value for that ID
-Public Function CORE_GetStringFromID(ByVal TargetTypeRefTable As String, lngTarget As Variant) As String
+Public Function CORE_GetStringFromID(ByRef TargetTypeRefTable As IReferenceTableConfig, ByVal lngTarget As Variant) As String
 
     CORE_GetStringFromID = GetRelevantDataByID(TargetTypeRefTable, lngTarget).RefTypeName
 
 End Function
 
 'Gets any extra data that may be present for the Reftable. (Forward comments etc..)
-Public Function CORE_GetExtraDataFromID(ByVal TargetTypeRefTable As String, lngTarget As Variant) As RefTableExtraDataCollection
+Public Function CORE_GetExtraDataFromID(ByRef TargetTypeRefTable As IReferenceTableConfig, ByVal lngTarget As Variant) As RefTableExtraDataCollection
     
     Set CORE_GetExtraDataFromID = GetRelevantDataByID(TargetTypeRefTable, lngTarget).RefTypeExtraData
     
 End Function
 
 'Returns a RefTableDataClass for use with the GetXDatafromY functions based off a string search.
-Private Function GetRelevantDataByStr(ByVal TargetTypeRefTable As String, varTarget As String) As RefTableDataClass
+Private Function GetRelevantDataByStr(ByRef TargetTypeRefTable As IReferenceTableConfig, ByVal varTarget As String) As RefTableDataClass
     Dim tmpRefTableData As RefTableDataClass
     
     If varTarget <> "No Data" Then
@@ -139,7 +140,7 @@ Private Function GetRelevantDataByStr(ByVal TargetTypeRefTable As String, varTar
 End Function
 
 'Returns a RefTableDataClass for use with the GetXDataFromY functions based off a long(variant) search.
-Private Function GetRelevantDataByID(ByVal TargetTypeRefTable As String, varTarget As Variant) As RefTableDataClass
+Private Function GetRelevantDataByID(ByRef TargetTypeRefTable As IReferenceTableConfig, varTarget As Variant) As RefTableDataClass
     Dim tmpRefTableData As RefTableDataClass
     
     If RTMInCollection(CORE_GetRefCol(TargetTypeRefTable, rtkt_RefTypeRefID), CStr(varTarget)) Then
@@ -172,7 +173,7 @@ End Function
 'Any fields not named RefID and RefName are added to a RefTableExtraDataCollection object inside of the RefTableDataClass.
 'The Field.Name is used as the Key (Cast as String) for the collection, and the Field.Value is used as the Value.
 'Not tested where the Field.Value is an object.
-Private Function BuildRefTableCollectionClass(ByVal TargetRefTable As String, Optional KeyType As RefTableKeyType = rtkt_RefTypeRefName) As RefTableCollectionClass
+Private Function BuildRefTableCollectionClass(ByRef TargetRefTable As IReferenceTableConfig, Optional KeyType As RefTableKeyType = rtkt_RefTypeRefName) As RefTableCollectionClass
     'Generic function to build a collection based of a 2 field table. (IE: RefTable Type Tables)
     Dim strSQL As String
     Dim rtm_dbConnection As New ADODB.Connection
@@ -225,10 +226,10 @@ Private Function BuildRefTableCollectionClass(ByVal TargetRefTable As String, Op
         For lCount = 0 To rtm_rsRecordset.Fields.Count - 1
             
             Select Case rtm_rsRecordset.Fields(lCount).Name
-                Case "RefID" 'Should be a Unique identifier or PK Duplicated values will cause failure when adding to collection.
+                Case TargetRefTable.RefID 'Should be a Unique identifier or PK Duplicated values will cause failure when adding to collection.
                     'TODO: Maybe create a way to handle if this field in DB is not Unique.
                     RefTableData.RefTypeID = rtm_rsRecordset.Fields(lCount).Value
-                Case "RefName"
+                Case TargetRefTable.RefName
                     If Not IsNull(rtm_rsRecordset.Fields(lCount).Value) Then
                         RefTableData.RefTypeName = rtm_rsRecordset.Fields(lCount).Value
                     Else:
@@ -264,15 +265,15 @@ Private Function BuildRefTableCollectionClass(ByVal TargetRefTable As String, Op
     
 End Function
 
-Private Function GenericSelectAllStatement(ByVal TargetRefTable As String) As String
-    If InStr(1, TargetRefTable, " ", vbTextCompare) > 0 Then
-        GenericSelectAllStatement = "SELECT * FROM [" & TargetRefTable & "]"
+Private Function GenericSelectAllStatement(ByRef TargetRefTable As IReferenceTableConfig) As String
+    If InStr(1, TargetRefTable.RefTableName, " ", vbTextCompare) > 0 Then
+        GenericSelectAllStatement = "SELECT * FROM [" & TargetRefTable.RefTableName & "]"
     Else
-        GenericSelectAllStatement = "SELECT * FROM " & TargetRefTable
+        GenericSelectAllStatement = "SELECT * FROM " & TargetRefTable.RefTableName
     End If
 End Function
 
-Public Function CORE_CheckIfTextExists(ByVal TargetRefTable As String, ByVal TargetText As String) As Boolean
+Public Function CORE_CheckIfTextExists(ByRef TargetRefTable As IReferenceTableConfig, ByVal TargetText As String) As Boolean
     Dim colToCheck As Collection
     
     Set colToCheck = CORE_GetRefCol(TargetRefTable)
@@ -281,7 +282,7 @@ Public Function CORE_CheckIfTextExists(ByVal TargetRefTable As String, ByVal Tar
             
 End Function
 
-Public Function CORE_CheckIfIDExists(ByVal TargetRefTable As String, ByVal TargetID As String) As Boolean
+Public Function CORE_CheckIfIDExists(ByRef TargetRefTable As IReferenceTableConfig, ByVal TargetID As String) As Boolean
     Dim colToCheck As Collection
     
     Set colToCheck = CORE_GetRefCol(TargetRefTable, rtkt_RefTypeRefID)
@@ -290,7 +291,7 @@ Public Function CORE_CheckIfIDExists(ByVal TargetRefTable As String, ByVal Targe
     
 End Function
 
-Public Function CORE_AddNewRefData(ByVal TargetRefTable As String, ByRef NewRefTableData As RefTableDataClass)
+Public Function CORE_AddNewRefData(ByRef TargetRefTable As IReferenceTableConfig, ByRef NewRefTableData As RefTableDataClass)
     'RefTables with Extra Data (Field count over 2)
     Dim strSQL As String
     Dim rtm_dbConnection As New ADODB.Connection
@@ -303,7 +304,7 @@ Public Function CORE_AddNewRefData(ByVal TargetRefTable As String, ByRef NewRefT
     Dim dbStateAtStart As ADODB.ObjectStateEnum
     
     
-    If LastRefTableUpdate(TargetRefTable) > CDate(RefTableBuildDate.Item(TargetRefTable)) Then
+    If LastRefTableUpdate(TargetRefTable) > CDate(RefTableBuildDate.Item(TargetRefTable.RefTableName)) Then
         CORE_UpdateRefTableCollections , TargetRefTable
     End If
     'TODO: Is this still a proper check?
@@ -345,9 +346,9 @@ Public Function CORE_AddNewRefData(ByVal TargetRefTable As String, ByRef NewRefT
         
         rtm_rsRecordset.AddNew
         If NewRefTableData.RefTypeID <> -1 Then
-            rtm_rsRecordset.Fields("RefID").Value = NewRefTableData.RefTypeID
+            rtm_rsRecordset.Fields(TargetRefTable.RefID).Value = NewRefTableData.RefTypeID
         End If
-        rtm_rsRecordset.Fields("RefName").Value = NewRefTableData.RefTypeName
+        rtm_rsRecordset.Fields(TargetRefTable.RefName).Value = NewRefTableData.RefTypeName
         
         For Each extDataFieldName In NewRefTableData.RefTypeExtraData.GetCollectionByExtraDataType(rtedt_FieldNames)
             'TODO: May need to add error handling code for Field changes mid process... though this should be mitigated
@@ -382,7 +383,7 @@ Public Function CORE_AddNewRefData(ByVal TargetRefTable As String, ByRef NewRefT
     
 End Function
 
-Public Function CORE_UpdateExistingRefData(ByVal TargetRefTable As String, ByRef NewRefTableData As RefTableDataClass)
+Public Function CORE_UpdateExistingRefData(ByRef TargetRefTable As IReferenceTableConfig, ByRef NewRefTableData As RefTableDataClass)
     Dim strSQL As String
     Dim rtm_dbConnection As New ADODB.Connection
     Dim rtm_rsRecordset As New ADODB.Recordset
@@ -393,15 +394,15 @@ Public Function CORE_UpdateExistingRefData(ByVal TargetRefTable As String, ByRef
     Dim tmpRefTableColData As RefTableCollectionClass
     Dim dbStateAtStart As ADODB.ObjectStateEnum
     
-    If LastRefTableUpdate(TargetRefTable) > CDate(RefTableBuildDate.Item(TargetRefTable)) Then
-        UpdateRefTableCollections , TargetRefTable
+    If LastRefTableUpdate(TargetRefTable) > CDate(RefTableBuildDate.Item(TargetRefTable.RefTableName)) Then
+        CORE_UpdateRefTableCollections , TargetRefTable
     End If
     
     'issues if refID is a string
-    If InStr(1, TargetRefTable, " ", vbTextCompare) > 0 Then
-        strSQL = "SELECT * FROM [" & TargetRefTable & "] Where RefID = " & NewRefTableData.RefTypeID
+    If InStr(1, TargetRefTable.RefTableName, " ", vbTextCompare) > 0 Then
+        strSQL = "SELECT * FROM [" & TargetRefTable.RefTableName & "] Where RefID = " & NewRefTableData.RefTypeID
     Else:
-        strSQL = "SELECT * FROM " & TargetRefTable & " Where RefID = " & NewRefTableData.RefTypeID
+        strSQL = "SELECT * FROM " & TargetRefTable.RefTableName & " Where RefID = " & NewRefTableData.RefTypeID
     End If
 
     Set rtm_dbConnection = RefTableConfig.RefTableDBConnection
@@ -435,16 +436,16 @@ Public Function CORE_UpdateExistingRefData(ByVal TargetRefTable As String, ByRef
 '    CombinedConRecordSetPrep rtm_rsRecordset, strSQL, adOpenKeyset, adLockOptimistic
     
     If rtm_rsRecordset.RecordCount = 0 Then
-        AddNewRefData TargetRefTable, NewRefTableData
+        CORE_AddNewRefData TargetRefTable, NewRefTableData
     ElseIf rtm_rsRecordset.RecordCount = 1 Then
     
-        If rtm_rsRecordset.Fields("RefID").Value <> NewRefTableData.RefTypeID Then
-            rtm_rsRecordset.Fields("RefID").Value = NewRefTableData.RefTypeID
+        If rtm_rsRecordset.Fields(TargetRefTable.RefID).Value <> NewRefTableData.RefTypeID Then
+            rtm_rsRecordset.Fields(TargetRefTable.RefID).Value = NewRefTableData.RefTypeID
         End If
         
         
-        If rtm_rsRecordset.Fields("RefName").Value <> NewRefTableData.RefTypeName Then
-            rtm_rsRecordset.Fields("RefName").Value = NewRefTableData.RefTypeName
+        If rtm_rsRecordset.Fields(TargetRefTable.RefName).Value <> NewRefTableData.RefTypeName Then
+            rtm_rsRecordset.Fields(TargetRefTable.RefName).Value = NewRefTableData.RefTypeName
         End If
         
         For Each extDataFieldName In NewRefTableData.RefTypeExtraData.GetCollectionByExtraDataType(rtedt_FieldNames)
@@ -472,7 +473,7 @@ Public Function CORE_UpdateExistingRefData(ByVal TargetRefTable As String, ByRef
     Set rtm_dbConnection = Nothing
     
 '   If blnIgnoreRefUpdateChecks = False Then
-        UpdateRefTableCollections True, TargetRefTable
+        CORE_UpdateRefTableCollections True, TargetRefTable
 '   Else:
 '       Set tmpRefTableColData = colRefTableCollections.Item(GetTableNameForRefTableEnu(TargetRefTable))
 '       tmpRefTableColData.Add NewRefTableData
@@ -480,7 +481,7 @@ Public Function CORE_UpdateExistingRefData(ByVal TargetRefTable As String, ByRef
     
 End Function
 
-Private Function LastRefTableUpdate(ByVal TargetRefTable As String, Optional ByVal UpdateDate As Boolean = False) As Date
+Private Function LastRefTableUpdate(ByRef TargetRefTable As IReferenceTableConfig, Optional ByVal UpdateDate As Boolean = False) As Date
     'Returns the Date in the ApplicationDataStore pertaining to the TargetRefTable supplied, or if UpdateDate = True
     'updates the date to the current date and time and returns that. Also returns current date if ApplicationDataStore's
     'ElementDataStore field is Null.
@@ -498,7 +499,7 @@ Private Function LastRefTableUpdate(ByVal TargetRefTable As String, Optional ByV
     
 UpdateStart:
 
-    strSQL = "Select * from ApplicationDataStore where ApplicationElement = '" & TargetRefTable & "Update'"
+    strSQL = "Select * from ApplicationDataStore where ApplicationElement = '" & TargetRefTable.RefTableName & "Update'"
     
     Set DBCon = RefTableConfig.RefTableDBConnection
 
@@ -535,7 +536,7 @@ UpdateStart:
     'Adds new Reftable entry to ApplicationDataStore if not found
     If dbRS.RecordCount = 0 Then
         dbRS.AddNew
-        dbRS.Fields("ApplicationElement").Value = TargetRefTable & "Update"
+        dbRS.Fields("ApplicationElement").Value = TargetRefTable.RefTableName & "Update"
         dbRS.Update
     End If
     
@@ -600,7 +601,7 @@ TableMissing:
 
 End Function
 
-Public Function CORE_GetConfiguredRefTableDataClass(ByVal TargetRefTable As String) As RefTableDataClass
+Public Function CORE_GetConfiguredRefTableDataClass(ByRef TargetRefTable As IReferenceTableConfig) As RefTableDataClass
     'Returns an empty RefTableDataClass that has been configured with the fields from the TargetRefTable
     'for use with adding new RefTableData
     Dim DBCon As ADODB.Connection
@@ -645,7 +646,7 @@ Public Function CORE_GetConfiguredRefTableDataClass(ByVal TargetRefTable As Stri
     Set rtnRefTabDataCls = New RefTableDataClass
     
     For lCount = 0 To dbRS.Fields.Count - 1
-        If dbRS.Fields(lCount).Name <> "RefID" And dbRS.Fields(lCount).Name <> "RefName" Then
+        If dbRS.Fields(lCount).Name <> TargetRefTable.RefID And dbRS.Fields(lCount).Name <> TargetRefTable.RefName Then
             rtnRefTabDataCls.RefTypeExtraData.Add "", CStr(dbRS.Fields(lCount).Name)
         End If
     Next lCount
